@@ -7,7 +7,7 @@ use log::debug;
 use nix::mount::{mount, MsFlags};
 
 use crate::cmdline::CmdlineOptions;
-use crate::{mkdir, Result};
+use crate::{mkdir, wait_for_device, Result};
 
 pub fn do_mount(
     src: Option<&str>,
@@ -49,6 +49,10 @@ pub fn mount_root(options: &CmdlineOptions) -> Result<()> {
         return Err("root= not found in /proc/cmdline".into());
     }
 
+    match options.rootfstype.as_deref() {
+        Some("nfs") | Some("9p") => (),
+        _ => wait_for_device(root)?,
+    }
     mkdir("/root")?;
 
     debug!(
