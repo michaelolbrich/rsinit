@@ -12,6 +12,8 @@ use std::os::fd::{AsFd, AsRawFd, RawFd};
 use std::os::unix::ffi::OsStrExt;
 use std::panic::set_hook;
 use std::path::Path;
+use std::thread;
+use std::time;
 
 use cmdline::{parse_cmdline, CmdlineOptions};
 #[cfg(feature = "dmverity")]
@@ -49,6 +51,21 @@ pub fn mkdir(dir: &str) -> Result<()> {
 
 fn read_file(filename: &str) -> std::result::Result<String, String> {
     read_to_string(filename).map_err(|e| format!("Failed to read {filename}: {e}"))
+}
+
+fn wait_for_device(root_device: &str) -> Result<()> {
+    let mut counter = 0;
+    while !Path::new(&root_device).exists() {
+        let duration = time::Duration::from_millis(5);
+
+        if counter > 1000 {
+            return Err("timout reached while waiting for the device".into());
+        }
+
+        thread::sleep(duration);
+        counter += 1;
+    }
+    Ok(())
 }
 
 /*
