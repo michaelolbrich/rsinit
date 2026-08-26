@@ -14,10 +14,11 @@ use std::panic::set_hook;
 
 use git_version::git_version;
 use log::{error, info};
+use nix::mount::{MntFlags, umount2};
 #[cfg(feature = "reboot-on-failure")]
 use nix::sys::reboot::{reboot, RebootMode};
 use nix::sys::termios::tcdrain;
-use nix::unistd::{chdir, chroot, dup2_stderr, dup2_stdout, execv, unlink};
+use nix::unistd::{chdir, dup2_stderr, dup2_stdout, execv, pivot_root, unlink};
 
 use crate::cmdline::{CmdlineOptions, CmdlineOptionsParser};
 #[cfg(feature = "dmverity")]
@@ -213,7 +214,8 @@ impl<'a> InitContext<'a> {
         mount_move_special(self.options.cleanup)?;
 
         chdir("/root")?;
-        chroot(".")?;
+        pivot_root(".", ".").map_err(|e| format!("pivot_root failed: {e}"))?;
+        umount2(".", MntFlags::MNT_DETACH)?;
         chdir("/")?;
         Ok(())
     }
