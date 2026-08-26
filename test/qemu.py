@@ -16,7 +16,7 @@ KERNEL_X86_64_URL = (
     "https://github.com/jluebbe/linux/releases/download/rauc-test-20241015-1/bzImage"
 )
 KERNEL_X86_64_SHA256 = (
-    "1d645700187640c58ea3821e55723cfe1627b68fcf0f38706d7bdd93c71fa056"
+    "68cc8364ae9394a516cbeb0ef0c2d9482152ab206a12214efd7cc7cc57b193bc"
 )
 
 KERNEL_AARCH64_URL = None

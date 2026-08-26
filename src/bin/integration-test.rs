@@ -4,8 +4,16 @@
 use std::fs::read_dir;
 use std::io;
 use std::process;
+use std::process::exit;
 
+use nix::errno::Errno;
+use nix::sched::unshare;
+use nix::sched::CloneFlags;
 use nix::sys::reboot::{reboot, RebootMode};
+use nix::sys::wait::waitpid;
+use nix::sys::wait::WaitStatus;
+use nix::unistd::fork;
+use nix::unistd::ForkResult;
 use rsinit::integration::find_vport;
 use rsinit::util::{read_file, Result};
 
@@ -62,6 +70,34 @@ fn collect_block_devices() -> Result<json::JsonValue> {
 }
 
 fn main() -> Result<()> {
+    println!("Testing root mount...");
+
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { child, .. }) => match waitpid(child, None) {
+            Ok(WaitStatus::Exited(_, status)) => {
+                if status != 0 {
+                    return Err(
+                        "Failed to create user namespace, rootfs mounted incorrectly!".into(),
+                    );
+                }
+            }
+            _ => return Err("waitpid failed!".into()),
+        },
+        Ok(ForkResult::Child) => {
+            if let Err(err) = unshare(CloneFlags::CLONE_NEWUSER) {
+                if err == Errno::EINVAL {
+                    println!("Kernel does not support user namespaces, ignoring.");
+                    exit(0);
+                } else {
+                    exit(1);
+                }
+            } else {
+                exit(0);
+            }
+        }
+        Err(err) => println!("Fork readahead process failed: {err}!"),
+    }
+
     println!("Collecting system state...");
 
     let mut data = json::JsonValue::new_object();
